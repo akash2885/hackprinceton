@@ -1,24 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { 
-  Box, 
-  Container, 
-  Paper, 
-  Typography, 
-  Grid,
-  Card, 
-  CardContent,
-  CircularProgress,
-  Button,
-  Divider,
-  IconButton,
-  Tooltip
+import {
+    Box,
+    Container,
+    Typography,
+    Grid,
+    Card,
+    CardContent,
+    Button,
+    Divider,
+    IconButton,
+    Tooltip
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import InfoIcon from '@mui/icons-material/Info';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
+import { useState } from 'react';
 
 const mockCityData = {
     "new_york": {
@@ -58,11 +57,50 @@ const mockCityData = {
     }
 };
 
+const mockCityData2 = {
+    "new_york": {
+        name: "New York",
+        average_salary: 850000,
+        average_rent: 35000,
+        cost_of_living: 40000,
+        home_price: 7500000
+    },
+    "san_francisco": {
+        name: "San Francisco",
+        average_salary: 950000,
+        average_rent: 38000,
+        cost_of_living: 42000,
+        home_price: 12000000
+    },
+    "chicago": {
+        name: "Chicago",
+        average_salary: 650000,
+        average_rent: 20000,
+        cost_of_living: 28000,
+        home_price: 3500000
+    },
+    "austin": {
+        name: "Austin",
+        average_salary: 750000,
+        average_rent: 18000,
+        cost_of_living: 26000,
+        home_price: 4500000
+    },
+    "miami": {
+        name: "Miami",
+        average_salary: 700000,
+        average_rent: 22000,
+        cost_of_living: 30000,
+        home_price: 5000000
+    }
+};
+
 const calculatePercentChange = (current, baseline) => {
     return ((current - baseline) / baseline * 100).toFixed(1);
 };
 
 const ComparisonCard = ({ city, baselineCity }) => {
+    
     const getPercentageColor = (value, higherIsBetter) => {
         if (value > 0 && higherIsBetter) return '#4caf50'; // green
         if (value < 0 && higherIsBetter) return '#f44336'; // red
@@ -113,7 +151,7 @@ const ComparisonCard = ({ city, baselineCity }) => {
                     <Typography variant="h5" gutterBottom color="primary" sx={{ mb: 3 }}>
                         {city.name}
                     </Typography>
-                    
+
                     {metrics.map((metric, index) => {
                         const percentChange = calculatePercentChange(
                             city[metric.key],
@@ -121,7 +159,7 @@ const ComparisonCard = ({ city, baselineCity }) => {
                         );
                         const color = getPercentageColor(percentChange, metric.higherIsBetter);
 
-                        
+
                         return (
                             <Box key={metric.key} sx={{ mb: 2 }}>
                                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
@@ -134,14 +172,14 @@ const ComparisonCard = ({ city, baselineCity }) => {
                                         </IconButton>
                                     </Tooltip>
                                 </Box>
-                                
+
                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <Typography variant="h6">
                                         {metric.format(city[metric.key])}
                                     </Typography>
-                                    <Box 
-                                        sx={{ 
-                                            display: 'flex', 
+                                    <Box
+                                        sx={{
+                                            display: 'flex',
                                             alignItems: 'center',
                                             color: color,
                                             bgcolor: `${color}15`,
@@ -160,7 +198,7 @@ const ComparisonCard = ({ city, baselineCity }) => {
                                         </Typography>
                                     </Box>
                                 </Box>
-                                
+
                                 {index < metrics.length - 1 && (
                                     <Divider sx={{ my: 2 }} />
                                 )}
@@ -174,12 +212,35 @@ const ComparisonCard = ({ city, baselineCity }) => {
 };
 
 const CityStatsDashboard = () => {
-    const [searchParams] = useSearchParams();
+    
     const navigate = useNavigate();
-    const cityName = searchParams.get('city');
+    // const cityName = searchParams.get('city');
 
-    const baselineCity = mockCityData.new_york;
-    const otherCities = Object.values(mockCityData).filter(city => city.name !== "New York");
+    const [baselineCity, setBaselineCity] = useState(mockCityData.new_york);
+    const [otherCities, setOtherCities] = useState(Object.values(mockCityData).filter(city => city.name !== "New York"));
+
+    
+    // toggle
+    const [useMockData2, setUseMockData2] = useState(false);
+    
+    const handleToggle = () => {
+        
+        setUseMockData2(!useMockData2);
+
+        if (useMockData2) {
+            setBaselineCity(useMockData2 ? mockCityData2.new_york : mockCityData.new_york);
+            setOtherCities(Object.values(mockCityData2 ? mockCityData2 : mockCityData).filter(city => city.name !== "New York"));
+        } else {
+            setBaselineCity(mockCityData.new_york);
+            setOtherCities(Object.values(mockCityData).filter(city => city.name !== "New York"));
+        }
+
+        // otherCities = Object.values(mockCityData2 ? mockCityData2 : mockCityData).filter(city => city.name !== "New York");
+
+        
+    };
+    
+    // toggle
 
     return (
         <Container maxWidth="lg" sx={{ py: 4 }}>
@@ -207,11 +268,25 @@ const CityStatsDashboard = () => {
                 </Typography>
             </motion.div>
 
+            <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.3 }}
+            >
+                <Button
+                    variant="contained"
+                    onClick={handleToggle}
+                    sx={{ mb: 3 }}
+                >
+                    Toggle Predicted Prices
+                </Button>
+            </motion.div>
+
             <Grid container spacing={3}>
                 {/* Baseline City Card */}
                 <Grid item xs={12} md={4}>
-                    <ComparisonCard 
-                        city={baselineCity} 
+                    <ComparisonCard
+                        city={baselineCity}
                         baselineCity={baselineCity}
                     />
                 </Grid>
@@ -219,7 +294,7 @@ const CityStatsDashboard = () => {
                 {/* Other Cities */}
                 {otherCities.map((city, index) => (
                     <Grid item xs={12} md={4} key={city.name}>
-                        <ComparisonCard 
+                        <ComparisonCard
                             city={city}
                             baselineCity={baselineCity}
                         />
