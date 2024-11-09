@@ -4,7 +4,15 @@ from flask_cors import CORS
 import requests
 
 app = Flask(__name__)
-CORS(app, origins=["http://localhost:3000"])
+CORS(app, resources={
+    r"/*": {
+        "origins": "*",
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"]
+    }
+})
+PERPLEXITY_URL = "https://api.perplexity.ai/chat/completions"
+PERPLEXITY_API_TOKEN = os.environ.get("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")
 
 # def get_city_id(city_name):
 #     """Fetch the city ID for a given city name."""
@@ -50,15 +58,40 @@ CORS(app, origins=["http://localhost:3000"])
 
 @app.route("/nearby-cities", methods=["POST"])
 def get_nearby_cities():
+    # data = request.json  # Retrieve JSON data from the request
+    # if not data:
+    #     return jsonify({"error": "No data provided"}), 400
+    
+    # # Extract mainCity and nearbyCities from the received data
+    # main_city = data.get("mainCity")
+    # nearby_cities = data.get("nearbyCities")
+    
+    # if not main_city or not nearby_cities:
+    #     return jsonify({"error": "Invalid data structure. Expected 'mainCity' and 'nearbyCities' fields."}), 400
+
+    # # Organize the main city and nearby cities in a dictionary
+    # organized_data = {
+    #     "mainCity": main_city,
+    #     "otherCities": nearby_cities
+    # }
     data = request.json  # Retrieve JSON data from the request
     if not data:
         return jsonify({"error": "No data provided"}), 400
     
-    # Access specific fields from JSON if needed, e.g., "cities"
-    cities = data.get("cities")
-    if not cities:
-        return jsonify({"error": "No cities data provided"}), 400
+    # Extract mainCity and nearbyCities from the received data
+    main_city = data.get("mainCity")
+    nearby_cities = data.get("nearbyCities")
+    
+    if not main_city or not nearby_cities:
+        return jsonify({"error": "Invalid data structure. Expected 'mainCity' and 'nearbyCities' fields."}), 400
 
-    # Process the cities data as needed
-    # Example: return a success response with the cities received
-    return jsonify({"message": "Cities received successfully", "cities": cities})
+    # Example processing: return a success response with the cities received
+    return jsonify({
+        "message": "Cities received successfully",
+        "mainCity": main_city,
+        "nearbyCities": nearby_cities
+    })
+
+
+if __name__ == "__main__":
+    app.run(host='0.0.0.0', port=5001)
