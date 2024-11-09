@@ -284,8 +284,6 @@ const CityStatsDashboard = () => {
                 <Grid item xs={12} md={4}>
                     <ComparisonCard
                         city={baselineCity}
-                    <ComparisonCard
-                        city={baselineCity}
                         baselineCity={baselineCity}
                     />
                 </Grid>
@@ -293,7 +291,6 @@ const CityStatsDashboard = () => {
                 {/* Other Cities */}
                 {otherCities.map((city, index) => (
                     <Grid item xs={12} md={4} key={city.name}>
-                        <ComparisonCard
                         <ComparisonCard
                             city={city}
                             baselineCity={baselineCity}
