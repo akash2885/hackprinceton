@@ -1,19 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { 
-  Box, 
-  Container, 
-  Paper, 
-  Typography, 
-  Grid,
-  Card, 
-  CardContent,
-  CircularProgress,
-  Button,
-  Divider,
-  IconButton,
-  Tooltip
+import {
+    Box,
+    Container,
+    Paper,
+    Typography,
+    Grid,
+    Card,
+    CardContent,
+    CircularProgress,
+    Button,
+    Divider,
+    IconButton,
+    Tooltip
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import InfoIcon from '@mui/icons-material/Info';
@@ -63,12 +63,10 @@ const calculatePercentChange = (current, baseline) => {
 };
 
 const ComparisonCard = ({ city, baselineCity }) => {
-    const getPercentageColor = (value, higherIsBetter) => {
-        if (value > 0 && higherIsBetter) return '#4caf50'; // green
-        if (value < 0 && higherIsBetter) return '#f44336'; // red
-        if (value > 0 && !higherIsBetter) return '#f44336'; // red
-        if (value < 0 && !higherIsBetter) return '#4caf50'; // green
-        return '#757575'; // grey
+    const getPercentageColor = (value) => {
+        if (value > 0) return '#4caf50';
+        if (value < 0) return '#f44336';
+        return '#757575';
     };
 
     const metrics = [
@@ -76,29 +74,25 @@ const ComparisonCard = ({ city, baselineCity }) => {
             key: 'average_salary',
             label: 'Average Salary',
             format: value => `$${value.toLocaleString()}/yr`,
-            info: 'Annual average salary before taxes',
-            higherIsBetter: true
+            info: 'Annual average salary before taxes'
         },
         {
             key: 'average_rent',
             label: 'Average Rent',
             format: value => `$${value.toLocaleString()}/mo`,
-            info: 'Monthly rent for a 1-bedroom apartment',
-            higherIsBetter: false
+            info: 'Monthly rent for a 1-bedroom apartment'
         },
         {
             key: 'cost_of_living',
             label: 'Cost of Living',
             format: value => `$${value.toLocaleString()}/mo`,
-            info: 'Monthly living expenses excluding rent',
-            higherIsBetter: false
+            info: 'Monthly living expenses excluding rent'
         },
         {
             key: 'home_price',
             label: 'Median Home Price',
             format: value => `$${value.toLocaleString()}`,
-            info: 'Median price for a home in the area',
-            higherIsBetter: false
+            info: 'Median price for a home in the area'
         }
     ];
 
@@ -113,15 +107,14 @@ const ComparisonCard = ({ city, baselineCity }) => {
                     <Typography variant="h5" gutterBottom color="primary" sx={{ mb: 3 }}>
                         {city.name}
                     </Typography>
-                    
+
                     {metrics.map((metric, index) => {
                         const percentChange = calculatePercentChange(
                             city[metric.key],
                             baselineCity[metric.key]
                         );
-                        const color = getPercentageColor(percentChange, metric.higherIsBetter);
+                        const color = getPercentageColor(percentChange);
 
-                        
                         return (
                             <Box key={metric.key} sx={{ mb: 2 }}>
                                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
@@ -134,14 +127,14 @@ const ComparisonCard = ({ city, baselineCity }) => {
                                         </IconButton>
                                     </Tooltip>
                                 </Box>
-                                
+
                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <Typography variant="h6">
                                         {metric.format(city[metric.key])}
                                     </Typography>
-                                    <Box 
-                                        sx={{ 
-                                            display: 'flex', 
+                                    <Box
+                                        sx={{
+                                            display: 'flex',
                                             alignItems: 'center',
                                             color: color,
                                             bgcolor: `${color}15`,
@@ -160,7 +153,7 @@ const ComparisonCard = ({ city, baselineCity }) => {
                                         </Typography>
                                     </Box>
                                 </Box>
-                                
+
                                 {index < metrics.length - 1 && (
                                     <Divider sx={{ my: 2 }} />
                                 )}
@@ -210,8 +203,8 @@ const CityStatsDashboard = () => {
             <Grid container spacing={3}>
                 {/* Baseline City Card */}
                 <Grid item xs={12} md={4}>
-                    <ComparisonCard 
-                        city={baselineCity} 
+                    <ComparisonCard
+                        city={baselineCity}
                         baselineCity={baselineCity}
                     />
                 </Grid>
@@ -219,7 +212,7 @@ const CityStatsDashboard = () => {
                 {/* Other Cities */}
                 {otherCities.map((city, index) => (
                     <Grid item xs={12} md={4} key={city.name}>
-                        <ComparisonCard 
+                        <ComparisonCard
                             city={city}
                             baselineCity={baselineCity}
                         />
