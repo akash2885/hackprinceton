@@ -62,22 +62,25 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 }
 
 // Heatmap Layer Component
-const HeatmapLayer = ({ data, enabled }) => {
+const HeatmapLayer = ({ data, enabled, filterDistance }) => {
     const map = useMap();
 
     useEffect(() => {
         if (!enabled || !data.length) return;
 
-        const heat = L.heatLayer(data, {
-            radius: 25,
-            blur: 15,
+        // Filter data based on the distance
+        const filteredData = data.filter(point => point[2] <= filterDistance);
+
+        // Create heatmap layer
+        const heat = L.heatLayer(filteredData, {
+            radius: 35, // Adjust radius for a better visual effect
+            blur: 25,   // Blur for smooth transitions
             maxZoom: 10,
-            max: 1.0,
             gradient: {
                 0.4: 'blue',
-                0.6: 'cyan',
-                0.7: 'lime',
-                0.8: 'yellow',
+                0.6: 'lime',
+                0.7: 'yellow',
+                0.8: 'orange',
                 1.0: 'red'
             }
         }).addTo(map);
@@ -85,10 +88,11 @@ const HeatmapLayer = ({ data, enabled }) => {
         return () => {
             map.removeLayer(heat);
         };
-    }, [map, data, enabled]);
+    }, [map, data, enabled, filterDistance]);
 
     return null;
 };
+
 
 const MapController = ({ center, zoom }) => {
     const map = useMap();
@@ -723,11 +727,13 @@ const LocationLanding = () => {
                             data={filteredCities.map(city => [
                                 parseFloat(city.lat),
                                 parseFloat(city.lon),
-                                1 - (city.distance / filterDistance) // Intensity based on distance
+                                city.distance // Use the distance to adjust intensity
                             ])}
                             enabled={showHeatmap}
+                            filterDistance={filterDistance}
                         />
                     )}
+
 
                     {mainMarker && (
                         <Marker
