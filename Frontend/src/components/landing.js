@@ -183,37 +183,6 @@ const LocationLanding = () => {
             const nearbyFiltered = await fetchNearbyCities(mainCity.lat, mainCity.lon);
             setNearbyCities(nearbyFiltered);
 
-            // Prepare data for backend
-            const cityData = {
-                mainCity: mainCity.name,
-                nearbyCities: nearbyFiltered.map(city => ({
-                    name: city.name,
-                    distance: city.distance
-                }))
-            };
-
-            // Send to backend (URL to be provided)
-            try {
-                const response = await fetch('YOUR_BACKEND_URL_HERE', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(cityData)
-                });
-
-                if (!response.ok) {
-                    throw new Error('Failed to send data to backend');
-                }
-
-                // Optional: Handle successful response
-                const responseData = await response.json();
-                console.log('Successfully sent city data to backend:', responseData);
-
-            } catch (error) {
-                console.error('Error sending data to backend:', error);
-            }
-
         } catch (error) {
             console.error('Error handling search:', error);
         }
@@ -256,9 +225,42 @@ const LocationLanding = () => {
     };
 
     // Function to handle stats button click
-    const handleViewStats = () => {
+    const handleViewStats = async () => {
         if (mainMarker) {
-            navigate(`/city-stats?lat=${mainMarker.lat}&lon=${mainMarker.lon}&city=${encodeURIComponent(mainMarker.name)}`);
+            // Prepare data for backend
+            const cityData = {
+                mainCity: mainMarker.name,
+                nearbyCities: nearbyCities.map(city => ({
+                    name: city.name,
+                    distance: city.distance
+                }))
+            };
+
+            // Send to backend
+            try {
+                const response = await fetch('YOUR_BACKEND_URL_HERE', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(cityData)
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to send data to backend');
+                }
+
+                // If successful, navigate to stats page
+                const responseData = await response.json();
+                console.log('Successfully sent city data to backend:', responseData);
+
+                // Navigate to stats page after successful backend post
+                navigate(`/city-stats?lat=${mainMarker.lat}&lon=${mainMarker.lon}&city=${encodeURIComponent(mainMarker.name)}`);
+
+            } catch (error) {
+                console.error('Error sending data to backend:', error);
+                // Optionally handle the error (show error message, etc.)
+            }
         }
     };
 
