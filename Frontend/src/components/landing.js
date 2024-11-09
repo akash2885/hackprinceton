@@ -9,11 +9,24 @@ import {
     Container,
     Autocomplete,
     Button,
-    Fade
+    Fade,
+    Typography,
+    FormControl,
+    InputLabel,
+    Select,
+    MenuItem,
+    Badge,
+    Switch,
+    FormControlLabel,
+    Drawer
 } from '@mui/material';
 import MyLocationIcon from '@mui/icons-material/MyLocation';
 import BarChartIcon from '@mui/icons-material/BarChart';
+import RestartAltIcon from '@mui/icons-material/RestartAlt';
+import MenuIcon from '@mui/icons-material/Menu';
+import CloseIcon from '@mui/icons-material/Close';
 import 'leaflet/dist/leaflet.css';
+import 'leaflet.heat';
 import L from 'leaflet';
 
 // Create custom icons for main location and nearby cities
@@ -37,7 +50,7 @@ const nearbyCityIcon = L.icon({
 
 // Function to calculate distance between two points using Haversine formula
 function calculateDistance(lat1, lon1, lat2, lon2) {
-    const R = 3959; // Earth's radius in miles
+    const R = 3959;
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
     const a =
@@ -47,6 +60,39 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     return R * c;
 }
+
+// Heatmap Layer Component
+const HeatmapLayer = ({ data, enabled, filterDistance }) => {
+    const map = useMap();
+
+    useEffect(() => {
+        if (!enabled || !data.length) return;
+
+        // Filter data based on the distance
+        const filteredData = data.filter(point => point[2] <= filterDistance);
+
+        // Create heatmap layer
+        const heat = L.heatLayer(filteredData, {
+            radius: 35, // Adjust radius for a better visual effect
+            blur: 25,   // Blur for smooth transitions
+            maxZoom: 10,
+            gradient: {
+                0.4: 'blue',
+                0.6: 'lime',
+                0.7: 'yellow',
+                0.8: 'orange',
+                1.0: 'red'
+            }
+        }).addTo(map);
+
+        return () => {
+            map.removeLayer(heat);
+        };
+    }, [map, data, enabled, filterDistance]);
+
+    return null;
+};
+
 
 const MapController = ({ center, zoom }) => {
     const map = useMap();
@@ -58,27 +104,116 @@ const MapController = ({ center, zoom }) => {
 
 const LocationLanding = () => {
     const navigate = useNavigate();
-    const [mapCenter, setMapCenter] = useState([35.9940, -78.8986]); // Default to Durham
+    const [mapCenter, setMapCenter] = useState([35.9940, -78.8986]);
     const [mainMarker, setMainMarker] = useState(null);
     const [nearbyCities, setNearbyCities] = useState([]);
     const [mapZoom, setMapZoom] = useState(11);
     const [searchResults, setSearchResults] = useState([]);
     const [showStatsButton, setShowStatsButton] = useState(false);
     const [selectedLocation, setSelectedLocation] = useState(null);
+    const [filterDistance, setFilterDistance] = useState(150);
+    const [sortBy, setSortBy] = useState('distance');
+    const [filteredCities, setFilteredCities] = useState([]);
+    const [drawerOpen, setDrawerOpen] = useState(false);
 
-    // Function to fetch nearby cities with improved logic
+    // Heatmap states
+    const [showHeatmap, setShowHeatmap] = useState(false);
+    const [heatmapData, setHeatmapData] = useState([]);
+    const [isLoadingHeatmap, setIsLoadingHeatmap] = useState(false);
+
+    // Effect to apply filters
+    useEffect(() => {
+        if (nearbyCities.length > 0) {
+            let filtered = nearbyCities.filter(city =>
+                parseFloat(city.distance) <= filterDistance
+            );
+
+            filtered.sort((a, b) => {
+                if (sortBy === 'distance') {
+                    return parseFloat(a.distance) - parseFloat(b.distance);
+                } else if (sortBy === 'name') {
+                    return a.name.localeCompare(b.name);
+                }
+                return 0;
+            });
+
+            setFilteredCities(filtered);
+        }
+    }, [nearbyCities, filterDistance, sortBy]);
+
+    const handleDistanceChange = (e) => {
+        const value = e.target.value;
+        if (value === '' || (Number(value) >= 0 && Number(value) <= 200)) {
+            setFilterDistance(value === '' ? 0 : Number(value));
+        }
+    };
+
+    const resetFilters = () => {
+        setFilterDistance(150);
+        setSortBy('distance');
+    };
+
+    const fetchPopulationData = async (bounds) => {
+        if (!bounds) return;
+
+        setIsLoadingHeatmap(true);
+        try {
+            const query = `
+                [out:json][timeout:25];
+                (
+                    node["place"="city"]
+                        (${bounds.getSouth()},${bounds.getWest()},
+                         ${bounds.getNorth()},${bounds.getEast()});
+                    node["place"="town"]
+                        (${bounds.getSouth()},${bounds.getWest()},
+                         ${bounds.getNorth()},${bounds.getEast()});
+                    node["place"="village"]
+                        (${bounds.getSouth()},${bounds.getWest()},
+                         ${bounds.getNorth()},${bounds.getEast()});
+                );
+                out body;
+                >;
+                out skel qt;
+            `;
+
+            const response = await fetch('https://overpass-api.de/api/interpreter', {
+                method: 'POST',
+                body: query
+            });
+
+            const data = await response.json();
+
+            const points = data.elements.map(element => {
+                let intensity = 0.3;
+                if (element.tags.place === 'city') intensity = 1.0;
+                else if (element.tags.place === 'town') intensity = 0.7;
+                else if (element.tags.place === 'village') intensity = 0.4;
+
+                return [
+                    element.lat,
+                    element.lon,
+                    intensity
+                ];
+            });
+
+            setHeatmapData(points);
+        } catch (error) {
+            console.error('Error fetching population data:', error);
+        } finally {
+            setIsLoadingHeatmap(false);
+        }
+    };
+
     const fetchNearbyCities = async (lat, lon) => {
         try {
-            // Use a larger viewbox and higher limit to get more initial results
-            const viewboxSize = 1.0; // Increased significantly to catch more cities
+            const viewboxSize = 1.0;
             const nearbyResponse = await fetch(
                 `https://nominatim.openstreetmap.org/search?format=json&q=city&countrycodes=us&bounded=1&viewbox=${
                     lon - viewboxSize},${lat + viewboxSize},${lon + viewboxSize},${lat - viewboxSize
-                }&limit=30` // Increased limit significantly
+                }&limit=30`
             );
             const nearbyData = await nearbyResponse.json();
 
-            // Filter and process cities
             let filteredCities = nearbyData
                 .filter(place => {
                     const distance = calculateDistance(
@@ -88,8 +223,8 @@ const LocationLanding = () => {
                         parseFloat(place.lon)
                     );
                     return (
-                        distance <= 150 && // Increased range to find more cities
-                        distance > 0.5 && // Keep minimum distance to avoid duplicates
+                        distance <= filterDistance &&
+                        distance > 0.5 &&
                         (place.type === 'city' || place.type === 'town' || place.class === 'place')
                     );
                 })
@@ -107,62 +242,13 @@ const LocationLanding = () => {
                 }))
                 .sort((a, b) => parseFloat(a.distance) - parseFloat(b.distance));
 
-            // If we don't have enough cities, try expanding the search
-            if (filteredCities.length < 5) {
-                const expandedResponse = await fetch(
-                    `https://nominatim.openstreetmap.org/search?format=json&q=city&countrycodes=us&bounded=1&viewbox=${
-                        lon - viewboxSize * 2},${lat + viewboxSize * 2},${lon + viewboxSize * 2},${lat - viewboxSize * 2
-                    }&limit=40`
-                );
-                const expandedData = await expandedResponse.json();
-
-                const expandedCities = expandedData
-                    .filter(place => {
-                        const distance = calculateDistance(
-                            lat,
-                            lon,
-                            parseFloat(place.lat),
-                            parseFloat(place.lon)
-                        );
-                        return (
-                            distance <= 200 && // Even larger range for expanded search
-                            distance > 0.5 &&
-                            (place.type === 'city' || place.type === 'town' || place.class === 'place')
-                        );
-                    })
-                    .map(place => ({
-                        lat: parseFloat(place.lat),
-                        lon: parseFloat(place.lon),
-                        name: place.display_name.split(',')[0],
-                        fullName: place.display_name,
-                        distance: calculateDistance(
-                            lat,
-                            lon,
-                            parseFloat(place.lat),
-                            parseFloat(place.lon)
-                        ).toFixed(1)
-                    }));
-
-                // Combine and sort all cities
-                filteredCities = [...filteredCities, ...expandedCities]
-                    .sort((a, b) => parseFloat(a.distance) - parseFloat(b.distance))
-                    // Remove duplicates based on name and distance
-                    .filter((city, index, self) =>
-                            index === self.findIndex((c) =>
-                                c.name === city.name && c.distance === city.distance
-                            )
-                    );
-            }
-
-            // Return between 5 and 10 cities, prioritizing closer ones
-            return filteredCities.slice(0, Math.max(Math.min(10, filteredCities.length), 5));
+            return filteredCities;
         } catch (error) {
             console.error('Error fetching nearby cities:', error);
             return [];
         }
     };
 
-    // Function to handle location search
     const handleSearch = async (location) => {
         if (!location) return;
 
@@ -179,16 +265,13 @@ const LocationLanding = () => {
             setShowStatsButton(true);
             setMapZoom(11);
 
-            // Fetch and set nearby cities
             const nearbyFiltered = await fetchNearbyCities(mainCity.lat, mainCity.lon);
             setNearbyCities(nearbyFiltered);
-
         } catch (error) {
             console.error('Error handling search:', error);
         }
     };
 
-    // Function to handle search input and fetch suggestions
     const handleSearchInput = async (value) => {
         if (!value || value.length < 3) return;
 
@@ -198,7 +281,6 @@ const LocationLanding = () => {
             );
             const data = await response.json();
 
-            // Enhanced search results with complete location data
             const formattedResults = data.map(item => ({
                 label: item.display_name,
                 value: item.display_name,
@@ -216,29 +298,24 @@ const LocationLanding = () => {
         }
     };
 
-    // Function to handle location selection
     const handleLocationSelect = (event, value) => {
         if (!value) return;
-
         setSelectedLocation(value);
         handleSearch(value);
     };
 
-    // Function to handle stats button click
     const handleViewStats = async () => {
         if (mainMarker) {
-            // Prepare data for backend
             const cityData = {
                 mainCity: mainMarker.name,
-                nearbyCities: nearbyCities.map(city => ({
+                nearbyCities: filteredCities.map(city => ({
                     name: city.name,
                     distance: city.distance
                 }))
             };
 
-            // Send to backend
             try {
-                const response = await fetch("http://10.25.245.175:5001/nearby-cities", {
+                const response = await fetch('http://10.25.245.175:5001/nearby-cities', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -250,21 +327,16 @@ const LocationLanding = () => {
                     throw new Error('Failed to send data to backend');
                 }
 
-                // If successful, navigate to stats page
                 const responseData = await response.json();
                 console.log('Successfully sent city data to backend:', responseData);
 
-                // Navigate to stats page after successful backend post
                 navigate(`/city-stats?lat=${mainMarker.lat}&lon=${mainMarker.lon}&city=${encodeURIComponent(mainMarker.name)}`);
-
             } catch (error) {
                 console.error('Error sending data to backend:', error);
-                // Optionally handle the error (show error message, etc.)
             }
         }
     };
 
-    // Function to handle getting current location
     const getCurrentLocation = () => {
         if (!navigator.geolocation) {
             console.error('Geolocation is not supported by your browser');
@@ -311,7 +383,6 @@ const LocationLanding = () => {
             position: 'relative',
             overflow: 'hidden'
         }}>
-            {/* Search Bar Overlay */}
             <Container maxWidth="sm" sx={{
                 position: 'absolute',
                 top: 20,
@@ -359,41 +430,284 @@ const LocationLanding = () => {
                         </IconButton>
                     </Box>
                 </Paper>
+            </Container>
+
+            {/* Menu Toggle Button */}
+            {showStatsButton && (
+                <IconButton
+                    onClick={() => setDrawerOpen(true)}
+                    sx={{
+                        position: 'absolute',
+                        right: 20,
+                        top: 20,
+                        zIndex: 1000,
+                        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                        '&:hover': {
+                            backgroundColor: 'rgba(255, 255, 255, 1)',
+                        }
+                    }}
+                >
+                    <MenuIcon />
+                </IconButton>
+            )}
+
+            {/* Side Drawer */}
+            <Drawer
+                anchor="right"
+                open={drawerOpen}
+                onClose={() => setDrawerOpen(false)}
+                PaperProps={{
+                    sx: {
+                        width: 350,
+                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                        backdropFilter: 'blur(5px)',
+                        p: 2
+                    }
+                }}
+            >
+                {/* Drawer Header */}
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                    <Typography variant="h6">Options & Filters</Typography>
+                    <IconButton onClick={() => setDrawerOpen(false)}>
+                        <CloseIcon />
+                    </IconButton>
+                </Box>
+
+                {/* Filter Controls */}
+                <Box sx={{ mb: 3 }}>
+                    <Typography variant="subtitle2" gutterBottom>
+                        Filter Nearby Cities
+                        <Badge
+                            badgeContent={filteredCities.length}
+                            color="primary"
+                            sx={{ ml: 2 }}
+                        />
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <TextField
+                            type="number"
+                            label="Max Distance (miles)"
+                            value={filterDistance}
+                            onChange={handleDistanceChange}
+                            size="small"
+                            fullWidth
+                            inputProps={{
+                                min: 0,
+                                max: 200,
+                                step: "1"
+                            }}
+                        />
+                        <FormControl size="small" fullWidth>
+                            <InputLabel>Sort By</InputLabel>
+                            <Select
+                                value={sortBy}
+                                onChange={(e) => setSortBy(e.target.value)}
+                                label="Sort By"
+                            >
+                                <MenuItem value="distance">Distance</MenuItem>
+                                <MenuItem value="name">City Name</MenuItem>
+                            </Select>
+                        </FormControl>
+                        <Box sx={{ display: 'flex', gap: 1 }}>
+                            <Button
+                                variant="contained"
+                                size="small"
+                                onClick={() => handleSearch(selectedLocation)}
+                                fullWidth
+                                sx={{
+                                    background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
+                                    boxShadow: '0 3px 5px 2px rgba(33, 203, 243, .3)',
+                                }}
+                            >
+                                Search
+                            </Button>
+                            <IconButton
+                                onClick={resetFilters}
+                                size="small"
+                                title="Reset filters"
+                            >
+                                <RestartAltIcon />
+                            </IconButton>
+                        </Box>
+                    </Box>
+                </Box>
+
+                {/* Heatmap Controls */}
+                <Box sx={{ mb: 3 }}>
+                    <Typography variant="subtitle2" gutterBottom>
+                        Population Heatmap
+                    </Typography>
+                    <FormControlLabel
+                        control={
+                            <Switch
+                                checked={showHeatmap}
+                                onChange={(e) => setShowHeatmap(e.target.checked)}
+                                disabled={isLoadingHeatmap}
+                            />
+                        }
+                        label={isLoadingHeatmap ? "Loading..." : "Show Population Density"}
+                    />
+                </Box>
 
                 {/* Stats Button */}
-                <Fade in={showStatsButton}>
-                    <Paper
-                        elevation={3}
-                        sx={{
-                            mt: 2,
-                            p: 2,
-                            backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                            backdropFilter: 'blur(5px)',
-                            display: showStatsButton ? 'block' : 'none'
-                        }}
-                    >
-                        <Button
-                            fullWidth
-                            variant="contained"
+                <Button
+                    fullWidth
+                    variant="contained"
+                    color="primary"
+                    startIcon={<BarChartIcon />}
+                    onClick={handleViewStats}
+                    sx={{
+                        textTransform: 'none',
+                        fontWeight: 600,
+                        background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
+                        boxShadow: '0 3px 5px 2px rgba(33, 203, 243, .3)',
+                        transition: 'transform 0.2s ease-in-out',
+                        '&:hover': {
+                            transform: 'scale(1.02)',
+                        }
+                    }}
+                >
+                    View City Statistics
+                </Button>
+            </Drawer>
+
+            {/* Menu Toggle Button */}
+            {showStatsButton && (
+                <IconButton
+                    onClick={() => setDrawerOpen(true)}
+                    sx={{
+                        position: 'absolute',
+                        right: 20,
+                        top: 20,
+                        zIndex: 1000,
+                        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                        '&:hover': {
+                            backgroundColor: 'rgba(255, 255, 255, 1)',
+                        }
+                    }}
+                >
+                    <MenuIcon />
+                </IconButton>
+            )}
+
+            {/* Side Drawer */}
+            <Drawer
+                anchor="right"
+                open={drawerOpen}
+                onClose={() => setDrawerOpen(false)}
+                PaperProps={{
+                    sx: {
+                        width: 350,
+                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                        backdropFilter: 'blur(5px)',
+                        p: 2
+                    }
+                }}
+            >
+                {/* Drawer Header */}
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                    <Typography variant="h6">Options & Filters</Typography>
+                    <IconButton onClick={() => setDrawerOpen(false)}>
+                        <CloseIcon />
+                    </IconButton>
+                </Box>
+
+                {/* Filter Controls */}
+                <Box sx={{ mb: 3 }}>
+                    <Typography variant="subtitle2" gutterBottom>
+                        Filter Nearby Cities
+                        <Badge
+                            badgeContent={filteredCities.length}
                             color="primary"
-                            startIcon={<BarChartIcon />}
-                            onClick={handleViewStats}
-                            sx={{
-                                textTransform: 'none',
-                                fontWeight: 600,
-                                background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
-                                boxShadow: '0 3px 5px 2px rgba(33, 203, 243, .3)',
-                                transition: 'transform 0.2s ease-in-out',
-                                '&:hover': {
-                                    transform: 'scale(1.02)',
-                                }
+                            sx={{ ml: 2 }}
+                        />
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <TextField
+                            type="number"
+                            label="Max Distance (miles)"
+                            value={filterDistance}
+                            onChange={handleDistanceChange}
+                            size="small"
+                            fullWidth
+                            inputProps={{
+                                min: 0,
+                                max: 200,
+                                step: "1"
                             }}
-                        >
-                            View City Statistics
-                        </Button>
-                    </Paper>
-                </Fade>
-            </Container>
+                        />
+                        <FormControl size="small" fullWidth>
+                            <InputLabel>Sort By</InputLabel>
+                            <Select
+                                value={sortBy}
+                                onChange={(e) => setSortBy(e.target.value)}
+                                label="Sort By"
+                            >
+                                <MenuItem value="distance">Distance</MenuItem>
+                                <MenuItem value="name">City Name</MenuItem>
+                            </Select>
+                        </FormControl>
+                        <Box sx={{ display: 'flex', gap: 1 }}>
+                            <Button
+                                variant="contained"
+                                size="small"
+                                onClick={() => handleSearch(selectedLocation)}
+                                fullWidth
+                                sx={{
+                                    background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
+                                    boxShadow: '0 3px 5px 2px rgba(33, 203, 243, .3)',
+                                }}
+                            >
+                                Search
+                            </Button>
+                            <IconButton
+                                onClick={resetFilters}
+                                size="small"
+                                title="Reset filters"
+                            >
+                                <RestartAltIcon />
+                            </IconButton>
+                        </Box>
+                    </Box>
+                </Box>
+
+                {/* Heatmap Controls */}
+                <Box sx={{ mb: 3 }}>
+                    <Typography variant="subtitle2" gutterBottom>
+                        Population Heatmap
+                    </Typography>
+                    <FormControlLabel
+                        control={
+                            <Switch
+                                checked={showHeatmap}
+                                onChange={(e) => setShowHeatmap(e.target.checked)}
+                            />
+                        }
+                        label="Show Population Density"
+                    />
+                </Box>
+
+                {/* Stats Button */}
+                <Button
+                    fullWidth
+                    variant="contained"
+                    color="primary"
+                    startIcon={<BarChartIcon />}
+                    onClick={handleViewStats}
+                    sx={{
+                        textTransform: 'none',
+                        fontWeight: 600,
+                        background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
+                        boxShadow: '0 3px 5px 2px rgba(33, 203, 243, .3)',
+                        transition: 'transform 0.2s ease-in-out',
+                        '&:hover': {
+                            transform: 'scale(1.02)',
+                        }
+                    }}
+                >
+                    View City Statistics
+                </Button>
+            </Drawer>
 
             {/* Map Container */}
             <Box sx={{ height: '100%', width: '100%' }}>
@@ -408,6 +722,19 @@ const LocationLanding = () => {
                     />
                     <MapController center={mapCenter} zoom={mapZoom} />
 
+                    {showHeatmap && (
+                        <HeatmapLayer
+                            data={filteredCities.map(city => [
+                                parseFloat(city.lat),
+                                parseFloat(city.lon),
+                                city.distance // Use the distance to adjust intensity
+                            ])}
+                            enabled={showHeatmap}
+                            filterDistance={filterDistance}
+                        />
+                    )}
+
+
                     {mainMarker && (
                         <Marker
                             position={[mainMarker.lat, mainMarker.lon]}
@@ -421,7 +748,7 @@ const LocationLanding = () => {
                         </Marker>
                     )}
 
-                    {nearbyCities.map((city, index) => (
+                    {filteredCities.map((city, index) => (
                         <Marker
                             key={index}
                             position={[city.lat, city.lon]}

@@ -1,17 +1,19 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import {
-    Box,
-    Container,
-    Typography,
-    Grid,
-    Card,
-    CardContent,
-    Button,
-    Divider,
-    IconButton,
-    Tooltip
+import { 
+  Box, 
+  Container, 
+  Paper, 
+  Typography, 
+  Grid,
+  Card, 
+  CardContent,
+  CircularProgress,
+  Button,
+  Divider,
+  IconButton,
+  Tooltip
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import InfoIcon from '@mui/icons-material/Info';
@@ -100,7 +102,6 @@ const calculatePercentChange = (current, baseline) => {
 };
 
 const ComparisonCard = ({ city, baselineCity }) => {
-    
     const getPercentageColor = (value, higherIsBetter) => {
         if (value > 0 && higherIsBetter) return '#4caf50'; // green
         if (value < 0 && higherIsBetter) return '#f44336'; // red
@@ -114,29 +115,25 @@ const ComparisonCard = ({ city, baselineCity }) => {
             key: 'average_salary',
             label: 'Average Salary',
             format: value => `$${value.toLocaleString()}/yr`,
-            info: 'Annual average salary before taxes',
-            higherIsBetter: true
+            info: 'Annual average salary before taxes'
         },
         {
             key: 'average_rent',
             label: 'Average Rent',
             format: value => `$${value.toLocaleString()}/mo`,
-            info: 'Monthly rent for a 1-bedroom apartment',
-            higherIsBetter: false
+            info: 'Monthly rent for a 1-bedroom apartment'
         },
         {
             key: 'cost_of_living',
             label: 'Cost of Living',
             format: value => `$${value.toLocaleString()}/mo`,
-            info: 'Monthly living expenses excluding rent',
-            higherIsBetter: false
+            info: 'Monthly living expenses excluding rent'
         },
         {
             key: 'home_price',
             label: 'Median Home Price',
             format: value => `$${value.toLocaleString()}`,
-            info: 'Median price for a home in the area',
-            higherIsBetter: false
+            info: 'Median price for a home in the area'
         }
     ];
 
@@ -159,7 +156,7 @@ const ComparisonCard = ({ city, baselineCity }) => {
                         );
                         const color = getPercentageColor(percentChange, metric.higherIsBetter);
 
-
+                        
                         return (
                             <Box key={metric.key} sx={{ mb: 2 }}>
                                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
@@ -287,6 +284,8 @@ const CityStatsDashboard = () => {
                 <Grid item xs={12} md={4}>
                     <ComparisonCard
                         city={baselineCity}
+                    <ComparisonCard
+                        city={baselineCity}
                         baselineCity={baselineCity}
                     />
                 </Grid>
@@ -294,6 +293,7 @@ const CityStatsDashboard = () => {
                 {/* Other Cities */}
                 {otherCities.map((city, index) => (
                     <Grid item xs={12} md={4} key={city.name}>
+                        <ComparisonCard
                         <ComparisonCard
                             city={city}
                             baselineCity={baselineCity}
