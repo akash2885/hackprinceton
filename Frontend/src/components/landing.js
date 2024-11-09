@@ -238,7 +238,7 @@ const LocationLanding = () => {
 
             // Send to backend
             try {
-                const response = await fetch('YOUR_BACKEND_URL_HERE', {
+                const response = await fetch("http://10.25.245.175:5001/nearby-cities", {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

@@ -1,236 +1,230 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import {
-    Box,
-    Container,
-    Paper,
-    Typography,
-    Grid,
-    Card,
-    CardContent,
-    CircularProgress
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { 
+  Box, 
+  Container, 
+  Paper, 
+  Typography, 
+  Grid,
+  Card, 
+  CardContent,
+  CircularProgress,
+  Button,
+  Divider,
+  IconButton,
+  Tooltip
 } from '@mui/material';
-import {
-    BarChart,
-    Bar,
-    XAxis,
-    YAxis,
-    CartesianGrid,
-    Tooltip,
-    Legend,
-    ResponsiveContainer,
-    RadarChart,
-    PolarGrid,
-    PolarAngleAxis,
-    Radar
-} from 'recharts';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import InfoIcon from '@mui/icons-material/Info';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 
-// Mock data function - Replace with your actual API call
-const fetchCityData = async (lat, lon) => {
-    // This is where you'd make your backend API call using lat/lon
-    // For now, returning mock data
-    const mockData = {
-        mainCity: {
-            name: "New York",
-            averageSalary: 85000,
-            averageRent: 3500,
-            costOfLiving: 100,
-            transportationCost: 127,
-            qualityOfLife: 75,
-            crimeRate: 45,
-            employmentRate: 95,
-        },
-        nearbyCities: [
-            {
-                name: "Jersey City",
-                averageSalary: 75000,
-                averageRent: 2800,
-                costOfLiving: 85,
-                transportationCost: 110,
-                qualityOfLife: 72,
-                crimeRate: 42,
-                employmentRate: 94,
-            },
-            {
-                name: "Newark",
-                averageSalary: 65000,
-                averageRent: 2200,
-                costOfLiving: 75,
-                transportationCost: 95,
-                qualityOfLife: 65,
-                crimeRate: 55,
-                employmentRate: 91,
-            },
-            // Add more nearby cities as needed
-        ]
-    };
-
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    return mockData;
+const mockCityData = {
+    "new_york": {
+        name: "New York",
+        average_salary: 85000,
+        average_rent: 3500,
+        cost_of_living: 4000,
+        home_price: 750000
+    },
+    "san_francisco": {
+        name: "San Francisco",
+        average_salary: 95000,
+        average_rent: 3800,
+        cost_of_living: 4200,
+        home_price: 1200000
+    },
+    "chicago": {
+        name: "Chicago",
+        average_salary: 65000,
+        average_rent: 2000,
+        cost_of_living: 2800,
+        home_price: 350000
+    },
+    "austin": {
+        name: "Austin",
+        average_salary: 75000,
+        average_rent: 1800,
+        cost_of_living: 2600,
+        home_price: 450000
+    },
+    "miami": {
+        name: "Miami",
+        average_salary: 70000,
+        average_rent: 2200,
+        cost_of_living: 3000,
+        home_price: 500000
+    }
 };
 
-const StatCard = ({ title, value, unit = '', color = '#2196f3' }) => (
-    <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-    >
-        <Card sx={{ height: '100%' }}>
-            <CardContent>
-                <Typography variant="h6" color="textSecondary" gutterBottom>
-                    {title}
-                </Typography>
-                <Typography variant="h4" component="div" sx={{ color }}>
-                    {typeof value === 'number' ? value.toLocaleString() : value}
-                    {unit && <span style={{ fontSize: '1rem', marginLeft: '4px' }}>{unit}</span>}
-                </Typography>
-            </CardContent>
-        </Card>
-    </motion.div>
-);
+const calculatePercentChange = (current, baseline) => {
+    return ((current - baseline) / baseline * 100).toFixed(1);
+};
 
-const CityStatsDashboard = ({ selectedCity, lat, lon }) => {
-    const [cityData, setCityData] = useState(null);
-    const [loading, setLoading] = useState(true);
+const ComparisonCard = ({ city, baselineCity }) => {
+    const getPercentageColor = (value, higherIsBetter) => {
+        if (value > 0 && higherIsBetter) return '#4caf50'; // green
+        if (value < 0 && higherIsBetter) return '#f44336'; // red
+        if (value > 0 && !higherIsBetter) return '#f44336'; // red
+        if (value < 0 && !higherIsBetter) return '#4caf50'; // green
+        return '#757575'; // grey
+    };
 
-    useEffect(() => {
-        const loadData = async () => {
-            setLoading(true);
-            const data = await fetchCityData(lat, lon);
-            setCityData(data);
-            setLoading(false);
-        };
-        loadData();
-    }, [lat, lon]);
-
-    if (loading) {
-        return (
-            <Box
-                sx={{
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    height: '100vh'
-                }}
-            >
-                <CircularProgress />
-            </Box>
-        );
-    }
-
-    const comparativeData = cityData.nearbyCities.map(city => ({
-        name: city.name,
-        'Average Salary': city.averageSalary,
-        'Average Rent': city.averageRent,
-        'Transportation Cost': city.transportationCost,
-    }));
-
-    const qualityMetrics = [
-        { subject: 'Cost of Living', A: cityData.mainCity.costOfLiving },
-        { subject: 'Quality of Life', A: cityData.mainCity.qualityOfLife },
-        { subject: 'Employment Rate', A: cityData.mainCity.employmentRate },
-        { subject: 'Safety', A: 100 - cityData.mainCity.crimeRate },
-        { subject: 'Transportation', A: cityData.mainCity.transportationCost },
+    const metrics = [
+        {
+            key: 'average_salary',
+            label: 'Average Salary',
+            format: value => `$${value.toLocaleString()}/yr`,
+            info: 'Annual average salary before taxes',
+            higherIsBetter: true
+        },
+        {
+            key: 'average_rent',
+            label: 'Average Rent',
+            format: value => `$${value.toLocaleString()}/mo`,
+            info: 'Monthly rent for a 1-bedroom apartment',
+            higherIsBetter: false
+        },
+        {
+            key: 'cost_of_living',
+            label: 'Cost of Living',
+            format: value => `$${value.toLocaleString()}/mo`,
+            info: 'Monthly living expenses excluding rent',
+            higherIsBetter: false
+        },
+        {
+            key: 'home_price',
+            label: 'Median Home Price',
+            format: value => `$${value.toLocaleString()}`,
+            info: 'Median price for a home in the area',
+            higherIsBetter: false
+        }
     ];
 
     return (
+        <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+        >
+            <Card sx={{ height: '100%', position: 'relative' }}>
+                <CardContent>
+                    <Typography variant="h5" gutterBottom color="primary" sx={{ mb: 3 }}>
+                        {city.name}
+                    </Typography>
+                    
+                    {metrics.map((metric, index) => {
+                        const percentChange = calculatePercentChange(
+                            city[metric.key],
+                            baselineCity[metric.key]
+                        );
+                        const color = getPercentageColor(percentChange, metric.higherIsBetter);
+
+                        
+                        return (
+                            <Box key={metric.key} sx={{ mb: 2 }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                                    <Typography variant="body2" color="textSecondary">
+                                        {metric.label}
+                                    </Typography>
+                                    <Tooltip title={metric.info}>
+                                        <IconButton size="small" sx={{ ml: 1 }}>
+                                            <InfoIcon fontSize="small" />
+                                        </IconButton>
+                                    </Tooltip>
+                                </Box>
+                                
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <Typography variant="h6">
+                                        {metric.format(city[metric.key])}
+                                    </Typography>
+                                    <Box 
+                                        sx={{ 
+                                            display: 'flex', 
+                                            alignItems: 'center',
+                                            color: color,
+                                            bgcolor: `${color}15`,
+                                            px: 1,
+                                            py: 0.5,
+                                            borderRadius: 1
+                                        }}
+                                    >
+                                        {percentChange > 0 ? (
+                                            <TrendingUpIcon fontSize="small" sx={{ mr: 0.5 }} />
+                                        ) : (
+                                            <TrendingDownIcon fontSize="small" sx={{ mr: 0.5 }} />
+                                        )}
+                                        <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                                            {percentChange}%
+                                        </Typography>
+                                    </Box>
+                                </Box>
+                                
+                                {index < metrics.length - 1 && (
+                                    <Divider sx={{ my: 2 }} />
+                                )}
+                            </Box>
+                        );
+                    })}
+                </CardContent>
+            </Card>
+        </motion.div>
+    );
+};
+
+const CityStatsDashboard = () => {
+    const [searchParams] = useSearchParams();
+    const navigate = useNavigate();
+    const cityName = searchParams.get('city');
+
+    const baselineCity = mockCityData.new_york;
+    const otherCities = Object.values(mockCityData).filter(city => city.name !== "New York");
+
+    return (
         <Container maxWidth="lg" sx={{ py: 4 }}>
+            <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.3 }}
+            >
+                <Button
+                    startIcon={<ArrowBackIcon />}
+                    onClick={() => navigate('/')}
+                    sx={{ mb: 3 }}
+                >
+                    Back to Map
+                </Button>
+            </motion.div>
+
             <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.5 }}
             >
-                <Typography variant="h3" gutterBottom>
-                    {cityData.mainCity.name} Area Statistics
+                <Typography variant="h3" gutterBottom sx={{ mb: 4 }}>
+                    City Comparison vs New York
                 </Typography>
             </motion.div>
 
-            <Grid container spacing={3} sx={{ mb: 4 }}>
-                <Grid item xs={12} md={3}>
-                    <StatCard
-                        title="Average Salary"
-                        value={cityData.mainCity.averageSalary}
-                        unit="/yr"
-                        color="#4caf50"
-                    />
-                </Grid>
-                <Grid item xs={12} md={3}>
-                    <StatCard
-                        title="Average Rent"
-                        value={cityData.mainCity.averageRent}
-                        unit="/mo"
-                        color="#f44336"
-                    />
-                </Grid>
-                <Grid item xs={12} md={3}>
-                    <StatCard
-                        title="Cost of Living Index"
-                        value={cityData.mainCity.costOfLiving}
-                        color="#2196f3"
-                    />
-                </Grid>
-                <Grid item xs={12} md={3}>
-                    <StatCard
-                        title="Quality of Life"
-                        value={cityData.mainCity.qualityOfLife}
-                        unit="%"
-                        color="#ff9800"
-                    />
-                </Grid>
-            </Grid>
-
             <Grid container spacing={3}>
-                <Grid item xs={12} md={8}>
-                    <motion.div
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.5, delay: 0.2 }}
-                    >
-                        <Paper sx={{ p: 2 }}>
-                            <Typography variant="h6" gutterBottom>
-                                Regional Comparison
-                            </Typography>
-                            <ResponsiveContainer width="100%" height={400}>
-                                <BarChart data={comparativeData}>
-                                    <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis dataKey="name" />
-                                    <YAxis />
-                                    <Tooltip />
-                                    <Legend />
-                                    <Bar dataKey="Average Salary" fill="#4caf50" />
-                                    <Bar dataKey="Average Rent" fill="#f44336" />
-                                    <Bar dataKey="Transportation Cost" fill="#2196f3" />
-                                </BarChart>
-                            </ResponsiveContainer>
-                        </Paper>
-                    </motion.div>
-                </Grid>
+                {/* Baseline City Card */}
                 <Grid item xs={12} md={4}>
-                    <motion.div
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.5, delay: 0.4 }}
-                    >
-                        <Paper sx={{ p: 2 }}>
-                            <Typography variant="h6" gutterBottom>
-                                Quality Metrics
-                            </Typography>
-                            <ResponsiveContainer width="100%" height={300}>
-                                <RadarChart data={qualityMetrics}>
-                                    <PolarGrid />
-                                    <PolarAngleAxis dataKey="subject" />
-                                    <Radar
-                                        name={cityData.mainCity.name}
-                                        dataKey="A"
-                                        fill="#8884d8"
-                                        fillOpacity={0.6}
-                                    />
-                                </RadarChart>
-                            </ResponsiveContainer>
-                        </Paper>
-                    </motion.div>
+                    <ComparisonCard 
+                        city={baselineCity} 
+                        baselineCity={baselineCity}
+                    />
                 </Grid>
+
+                {/* Other Cities */}
+                {otherCities.map((city, index) => (
+                    <Grid item xs={12} md={4} key={city.name}>
+                        <ComparisonCard 
+                            city={city}
+                            baselineCity={baselineCity}
+                        />
+                    </Grid>
+                ))}
             </Grid>
         </Container>
     );
