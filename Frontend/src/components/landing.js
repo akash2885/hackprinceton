@@ -328,7 +328,8 @@ const LocationLanding = () => {
                 }
 
                 const responseData = await response.json();
-                console.log('Successfully sent city data to backend:', responseData);
+                localStorage.setItem('cityData', JSON.stringify(responseData));
+                console.log('Successfully sent city data to backend:', JSON.parse(JSON.stringify(responseData)));
 
                 navigate(`/city-stats?lat=${mainMarker.lat}&lon=${mainMarker.lon}&city=${encodeURIComponent(mainMarker.name)}`);
             } catch (error) {
