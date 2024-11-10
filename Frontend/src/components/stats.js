@@ -25,6 +25,7 @@ const theme = createTheme({
 });
 
 const MetricRow = ({ label, value=0, baseValue, format = 'number', tooltip, icon }) => {
+  const isNegativeMetric = ['Cost of Living', 'Average Rent', 'Home Price'].includes(label);
   const diff = baseValue ? ((value - baseValue) / baseValue) * 100 : 0;
   const formattedValue = format === 'currency' 
     ? `$${value.toLocaleString()}`
@@ -58,9 +59,9 @@ const MetricRow = ({ label, value=0, baseValue, format = 'number', tooltip, icon
             //   color={diff > 0 ? (label === 'Cost of Living' ? 'success' : 'secondary') : (label === 'Cost of Living' ? 'success' : 'secondary')}
             color={
                 diff > 0
-                    ? (label === 'Cost of Living' ? 'secondary' : 'success')
-                    : (label === 'Cost of Living' ? 'success' : 'secondary')
-                }
+                  ? (isNegativeMetric ? 'secondary' : 'success')
+                  : (isNegativeMetric ? 'success' : 'secondary')
+              }
               sx={{ minWidth: 80 }}
             />
           )}
