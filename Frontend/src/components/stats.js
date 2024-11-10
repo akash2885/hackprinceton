@@ -1,421 +1,246 @@
-// Import necessary modules and components
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import {
-    Box,
-    Container,
-    Typography,
-    Grid,
-    Card,
-    CardContent,
-    CardHeader,
-    IconButton,
-    Tooltip,
-    Button,
-    Avatar,
-    Switch,
-    FormControlLabel,
-    Divider,
+import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
+import { 
+  Card, CardContent, CardHeader, 
+  Typography, Grid, LinearProgress, 
+  Chip, Box, ThemeProvider, createTheme, CircularProgress, Alert,
+  Tooltip, IconButton
 } from '@mui/material';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import InfoIcon from '@mui/icons-material/Info';
-import TrendingUpIcon from '@mui/icons-material/TrendingUp';
-import TrendingDownIcon from '@mui/icons-material/TrendingDown';
-import LocationCityIcon from '@mui/icons-material/LocationCity';
-import { createTheme, ThemeProvider } from '@mui/material/styles';
+import { 
+  Home as HomeIcon, 
+  Apartment as ApartmentIcon,
+  TrendingUp as TrendingUpIcon,
+  TrendingDown as TrendingDownIcon,
+  Info as InfoIcon,
+  AttachMoney as MoneyIcon,
+  House as HouseIcon
+} from '@mui/icons-material';
 
-// **Full definitions of mockCityData and mockCityData2**
+const theme = createTheme({
+  palette: {
+    primary: { main: '#3b82f6' },
+    secondary: { main: '#ef4444' },
+    success: { main: '#22c55e' },
+  },
+});
 
-// "{
-//   "chapel_hill": {
-//     "average_salary": 54143,
-//     "average_rent": 1946,
-//     "average_cost_of_living_with_rent": 2619,
-//     "average_home_price": 612672
-//   },
-//   "cary": {
-//     "average_salary": 59370,
-//     "average_rent": 1645,
-//     "average_cost_of_living_with_rent": 2383,
-//     "average_home_price": 623359
-//   },
-//   "apex": {
-//     "average_salary": 42054,
-//     "average_rent": 1638,
-//     "average_cost_of_living_with_rent": 2383,
-//     "average_home_price": 611264
-//   },
-//   "raleigh": {
-//     "average_salary": 70813,
-//     "average_rent": 1585,
-//     "average_cost_of_living_with_rent": 2307,
-//     "average_home_price": 438803
-//   },
-//   "wake_forest": {
-//     "average_salary": 61159,
-//     "average_rent": 1635,
-//     "average_cost_of_living_with_rent": 2307,
-//     "average_home_price": 520908
-//   }
-// }"
-const mockCityData = JSON.parse(localStorage.getItem('cityData')); // {
-//   new_york: {
-//     name: 'New York',
-//     average_salary: 85000,
-//     average_rent: 3500,
-//     cost_of_living: 4000,
-//     home_price: 750000,
-//   },
-//   san_francisco: {
-//     name: 'San Francisco',
-//     average_salary: 95000,
-//     average_rent: 3800,
-//     cost_of_living: 4200,
-//     home_price: 1200000,
-//   },
-//   chicago: {
-//     name: 'Chicago',
-//     average_salary: 65000,
-//     average_rent: 2000,
-//     cost_of_living: 2800,
-//     home_price: 350000,
-//   },
-//   austin: {
-//     name: 'Austin',
-//     average_salary: 75000,
-//     average_rent: 1800,
-//     cost_of_living: 2600,
-//     home_price: 450000,
-//   },
-//   miami: {
-//     name: 'Miami',
-//     average_salary: 70000,
-//     average_rent: 2200,
-//     cost_of_living: 3000,
-//     home_price: 500000,
-//   },
-// };
-
-// const cityData = JSON.parse(localStorage.getItem('cityData'));
-console.log(localStorage.getItem('cityData'));
-const mockCityData2 = JSON.parse(localStorage.getItem('cityData'));
-
-//   new_york: {
-//     name: 'New York',
-//     average_salary: 850000,
-//     average_rent: 35000,
-//     cost_of_living: 40000,
-//     home_price: 7500000,
-//   },
-//   san_francisco: {
-//     name: 'San Francisco',
-//     average_salary: 950000,
-//     average_rent: 38000,
-//     cost_of_living: 42000,
-//     home_price: 12000000,
-//   },
-//   chicago: {
-//     name: 'Chicago',
-//     average_salary: 650000,
-//     average_rent: 20000,
-//     cost_of_living: 28000,
-//     home_price: 3500000,
-//   },
-//   austin: {
-//     name: 'Austin',
-//     average_salary: 750000,
-//     average_rent: 18000,
-//     cost_of_living: 26000,
-//     home_price: 4500000,
-//   },
-//   miami: {
-//     name: 'Miami',
-//     average_salary: 700000,
-//     average_rent: 22000,
-//     cost_of_living: 30000,
-//     home_price: 5000000,
-//   },
-// };
-
-// Calculate percentage change function
-const calculatePercentChange = (current, baseline) => {
-    return (((current - baseline) / baseline) * 100).toFixed(1);
+const MetricRow = ({ label, value=0, baseValue, format = 'number', tooltip, icon }) => {
+  const diff = baseValue ? ((value - baseValue) / baseValue) * 100 : 0;
+  const formattedValue = format === 'currency' 
+    ? `$${value.toLocaleString()}`
+    : value.toLocaleString();
+  
+  return (
+    <Box sx={{ mb: 2 }}>
+      <Box display="flex" alignItems="center" justifyContent="space-between" mb={1}>
+        <Box display="flex" alignItems="center" gap={1}>
+          {icon}
+          <Typography variant="body2" fontWeight="medium">
+            {label}
+          </Typography>
+          {tooltip && (
+            <Tooltip title={tooltip}>
+              <IconButton size="small">
+                <InfoIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
+        </Box>
+        <Box display="flex" alignItems="center" gap={1}>
+          <Typography variant="body2" fontWeight="bold">
+            {formattedValue}
+          </Typography>
+          {baseValue && (
+            <Chip
+              size="small"
+              icon={diff > 0 ? <TrendingUpIcon /> : <TrendingDownIcon />}
+              label={`${diff > 0 ? '+' : ''}${Math.round(diff)}%`}
+            //   color={diff > 0 ? (label === 'Cost of Living' ? 'success' : 'secondary') : (label === 'Cost of Living' ? 'success' : 'secondary')}
+            color={
+                diff > 0
+                    ? (label === 'Cost of Living' ? 'secondary' : 'success')
+                    : (label === 'Cost of Living' ? 'success' : 'secondary')
+                }
+              sx={{ minWidth: 80 }}
+            />
+          )}
+        </Box>
+      </Box>
+      <LinearProgress 
+        variant="determinate" 
+        value={Math.min((value / (baseValue ? baseValue * 2 : value * 2)) * 100, 100)}
+        sx={{ 
+          height: 8, 
+          borderRadius: 4,
+          bgcolor: 'grey.200',
+          '& .MuiLinearProgress-bar': {
+            borderRadius: 4,
+          }
+        }} 
+      />
+    </Box>
+  );
 };
 
-// ComparisonCard Component
-const ComparisonCard = ({ city, baselineCity }) => {
-    if (!city || !baselineCity) {
-        // Handle the case where city or baselineCity is undefined
-        return null;
-    }
+function CityCard({ city, currentCity, isCurrent }) {
+  const getComparisonText = (cityToCompare) => {
+    if (!currentCity) return '';
+    const costDiff = cityToCompare.cost_of_living - currentCity.cost_of_living;
+    const salaryDiff = cityToCompare.average_salary - currentCity.average_salary;
+    const costPhrase = costDiff < 0 ? "lower" : "higher";
+    const salaryPhrase = salaryDiff < 0 ? "lower" : "higher";
+    return `${cityToCompare.name} has a ${Math.abs(costDiff)}% ${costPhrase} cost of living and a ${Math.abs(
+      Math.round((salaryDiff / currentCity.average_salary) * 100)
+    )}% ${salaryPhrase} average salary compared to ${currentCity.name}.`;
+  }
 
-    const getPercentageColor = (value, higherIsBetter) => {
-        if (value > 0 && higherIsBetter) return '#4caf50'; // green
-        if (value < 0 && higherIsBetter) return '#f44336'; // red
-        if (value > 0 && !higherIsBetter) return '#f44336'; // red
-        if (value < 0 && !higherIsBetter) return '#4caf50'; // green
-        return '#757575'; // grey
-    };
+  return (
+    <Card 
+      elevation={isCurrent ? 3 : 1}
+      sx={{ 
+        height: '100%',
+        borderRadius: 2,
+        border: isCurrent ? 2 : 1,
+        borderColor: isCurrent ? 'primary.main' : 'grey.200',
+        transition: 'transform 0.2s ease-in-out',
+        '&:hover': {
+          transform: 'translateY(-4px)',
+        }
+      }}
+    >
+      <CardHeader
+        title={
+          <Box display="flex" alignItems="center" gap={1}>
+            {isCurrent ? <HomeIcon color="primary" /> : <ApartmentIcon />}
+            <Typography variant="h6" component="div">
+              {city.name}
+            </Typography>
+            {isCurrent && (
+              <Chip label="Current City" size="small" color="primary" variant="outlined" />
+            )}
+          </Box>
+        }
+      />
+      <CardContent>
+        <MetricRow
+          label="Cost of Living"
+          value={city.cost_of_living}
+          baseValue={isCurrent ? null : currentCity.cost_of_living}
+          format='currency'
+          icon={<MoneyIcon fontSize="small" />}
+          tooltip="Cost of living index based on consumer prices including rent"
+        />
+        <MetricRow
+          label="Average Salary"
+          value={city.average_salary}
+          baseValue={isCurrent ? null : currentCity.average_salary}
+          format="currency"
+          icon={<MoneyIcon fontSize="small" />}
+          tooltip="Average annual salary for all occupations"
+        />
+        <MetricRow
+          label="Average Rent"
+          value={city.average_rent}
+          baseValue={isCurrent ? null : currentCity.average_rent}
+          format="currency"
+          icon={<HomeIcon fontSize="small" />}
+          tooltip="Average monthly rent for a 1-bedroom apartment"
+        />
+        <MetricRow
+          label="Home Price"
+          value={city.home_price}
+          baseValue={isCurrent ? null : currentCity.home_price}
+          format="currency"
+          icon={<HouseIcon fontSize="small" />}
+          tooltip="Median home price"
+        />
+      </CardContent>
+    </Card>
+  );
+}
 
-    const metrics = [
-        {
-            key: 'average_rent',
-            label: 'Average Rent',
-            format: value => `$${value}/mo`,
-            info: 'Monthly rent for a 1-bedroom apartment',
-            higherIsBetter: true,
-        },
-        {
-            key: 'average_salary',
-            label: 'Average Salary',
-            format: value => `$${value}/yr`,
+export default function CityStatsDashboard() {
+  const location = useLocation();
+  const [currentCity, setCurrentCity] = useState(null);
+  const [nearbyCities, setNearbyCities] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const { cityData, mainMarker } = location.state || {};
 
-            info: 'Annual average salary before taxes',
-            higherIsBetter: false,
-        },
-        {
-            key: 'cost_of_living',
-            label: 'Cost of Living',
-            format: value => `$${value}/mo`,
-            info: 'Monthly living expenses excluding rent',
-            higherIsBetter: false,
-        },
-        {
-            key: 'home_price',
-            label: 'Median Home Price',
-            format: value => `$${value}`,
-            info: 'Median price for a home in the area',
-            higherIsBetter: false,
-        },
-    ];
+  useEffect(() => {
+    if (!cityData || !mainMarker) return;
 
-    return (
-        <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-        >
-            <Card
-                sx={{
-                    height: '100%',
-                    position: 'relative',
-                    borderRadius: 2,
-                    boxShadow: 4,
-                }}
-            >
-                <CardHeader
-                    avatar={
-                        <Avatar sx={{ bgcolor: 'primary.main' }}>
-                            <LocationCityIcon />
-                        </Avatar>
-                    }
-                    title={
-                        <Typography variant="h6" color="textPrimary">
-                            {city.name}
-                        </Typography>
-                    }
-                />
-                <CardContent>
-                    {metrics.map((metric, index) => {
-                        const percentChange = calculatePercentChange(
-                            city[metric.key],
-                            baselineCity[metric.key]
-                        );
-                        const color = getPercentageColor(
-                            percentChange,
-                            metric.higherIsBetter
-                        );
-
-                        return (
-                            <Box key={metric.key} sx={{ mb: 2 }}>
-                                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                                    <Typography variant="subtitle2" color="textSecondary">
-                                        {metric.label}
-                                    </Typography>
-                                    <Tooltip title={metric.info}>
-                                        <IconButton size="small" sx={{ ml: 1 }}>
-                                            <InfoIcon fontSize="small" />
-                                        </IconButton>
-                                    </Tooltip>
-                                </Box>
-
-                                <Box
-                                    sx={{
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center',
-                                    }}
-                                >
-                                    <Typography variant="h6" color="textPrimary">
-                                        {metric.format(city[metric.key])}
-                                    </Typography>
-                                    {city.name !== baselineCity.name && (
-                                        <Box
-                                            sx={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                color: color,
-                                                bgcolor: `${color}15`,
-                                                px: 1,
-                                                py: 0.5,
-                                                borderRadius: 1,
-                                            }}
-                                        >
-                                            {percentChange > 0 ? (
-                                                <TrendingUpIcon fontSize="small" sx={{ mr: 0.5 }} />
-                                            ) : (
-                                                <TrendingDownIcon fontSize="small" sx={{ mr: 0.5 }} />
-                                            )}
-                                            <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                                                {Math.abs(percentChange)}%
-                                            </Typography>
-                                        </Box>
-                                    )}
-                                </Box>
-
-                                {index < metrics.length - 1 && <Divider sx={{ my: 2 }} />}
-                            </Box>
-                        );
-                    })}
-                </CardContent>
-            </Card>
-        </motion.div>
-    );
-};
-
-// Main Dashboard Component
-const CityStatsDashboard = () => {
-    const navigate = useNavigate();
-    const [useMockData2, setUseMockData2] = useState(false);
-    //   const [baselineCity, setBaselineCity] = useState(mockCityData.new_york);
-    const [baselineCity, setBaselineCity] = useState(mockCityData.currentCity);
-    const [otherCities, setOtherCities] = useState(
-        Object.values(mockCityData.otherCities).filter(city => city.name !== baselineCity.name)
-    );
-
-    const handleToggle = () => {
-        setUseMockData2(prevState => {
-            const newState = !prevState;
-            if (newState) {
-
-                setOtherCities(
-                    Object.values(mockCityData2.otherCities).filter(
-                        city => city.name !== baselineCity.name // breakpoint
-                    )
-                );
-            } else {
-
-                setOtherCities(
-                    Object.values(mockCityData.otherCities).filter(
-                        city => city.name !== baselineCity.name
-                    )
-                );
-            }
-            return newState;
+    const fetchData = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response = await fetch('http://10.25.245.175:5001/nearby-cities', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(cityData)
         });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch city data');
+        }
+
+        const data = await response.json();
+        console.log(data)
+        setCurrentCity(data.currentCity);
+        const otherCitiesArray = Object.entries(data.otherCities).map(([name, cityData]) => ({
+          name,
+          ...cityData
+        }));
+        setNearbyCities(otherCitiesArray);
+      } catch (err) {
+        setError('An error occurred while fetching data. Please try again later.');
+        console.error(err);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
-    // Custom theme
-    const theme = createTheme({
-        palette: {
-            primary: {
-                main: '#1976d2', // Blue color
-            },
-            secondary: {
-                main: '#f50057', // Pink color
-            },
-        },
-        typography: {
-            fontFamily: 'Roboto, Arial',
-            h4: {
-                fontWeight: 600,
-            },
-            h6: {
-                fontWeight: 500,
-            },
-        },
-    });
+    fetchData();
+  }, [cityData, mainMarker]);
 
+  if (isLoading) {
     return (
-        <ThemeProvider theme={theme}>
-            <Box
-                sx={{
-                    minHeight: '100vh',
-                    bgcolor: '#f5f5f5',
-                    py: 4,
-                }}
-            >
-                <Container maxWidth="lg">
-                    <motion.div
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.3 }}
-                    >
-                        <Button
-                            startIcon={<ArrowBackIcon />}
-                            onClick={() => navigate('/')}
-                            sx={{ mb: 3 }}
-                        >
-                            Back to Map
-                        </Button>
-                    </motion.div>
-
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ duration: 0.5 }}
-                    >
-                        <Typography variant="h4" gutterBottom sx={{ mb: 2 }}>
-                            {baselineCity.name} vs New York
-                        </Typography>
-                    </motion.div>
-
-                    <motion.div
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.3 }}
-                    >
-                        <FormControlLabel
-                            control={
-                                <Switch
-                                    checked={useMockData2}
-                                    onChange={handleToggle}
-                                    color="primary"
-                                />
-                            }
-                            label={
-                                useMockData2
-                                    ? 'Showing Predicted Prices'
-                                    : 'Showing Current Prices'
-                            }
-                            sx={{ mb: 4 }}
-                        />
-                    </motion.div>
-
-                    <Grid container spacing={3}>
-                        {/* Baseline City Card */}
-                        <Grid item xs={12} md={4}>
-                            <ComparisonCard
-                                city={baselineCity}
-                                baselineCity={baselineCity.name}
-                            />
-                        </Grid>
-
-                        {/* Other Cities */}
-                        {otherCities.map(city => (
-                            <Grid item xs={12} md={4} key={city.name}>
-                                <ComparisonCard
-                                    city={city}
-                                    baselineCity={baselineCity} // baselineCity={baselineCity}
-                                />
-                            </Grid>
-                        ))}
-                    </Grid>
-                </Container>
-            </Box>
-        </ThemeProvider>
+      <Box display="flex" justifyContent="center" alignItems="center" height="100vh">
+        <CircularProgress />
+      </Box>
     );
-};
+  }
 
-export default CityStatsDashboard;
+  if (error) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" height="100vh">
+        <Alert severity="error">{error}</Alert>
+      </Box>
+    );
+  }
+
+  return (
+    <ThemeProvider theme={theme}>
+      <Box sx={{ maxWidth: '1400px', mx: 'auto', p: 4 }}>
+        <Typography variant="h3" fontWeight="bold" textAlign="center" mb={2}>
+          City Comparison
+        </Typography>
+        <Typography variant="h5" textAlign="center" color="text.secondary" mb={6}>
+          Comparing {currentCity.name} with nearby cities
+        </Typography>
+        <Grid container spacing={3}>
+          {currentCity && (
+            <Grid item xs={12} md={6} lg={4}>
+              <CityCard city={currentCity} currentCity={currentCity} isCurrent={true} />
+            </Grid>
+          )}
+          {nearbyCities.map((city) => (
+            <Grid item xs={12} md={6} lg={4} key={city.name}>
+              <CityCard city={city} currentCity={currentCity} isCurrent={false} />
+            </Grid>
+          ))}
+        </Grid>
+      </Box>
+    </ThemeProvider>
+  );
+}

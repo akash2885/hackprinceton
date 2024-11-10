@@ -314,27 +314,37 @@ const LocationLanding = () => {
                 }))
             };
 
-            try {
-                const response = await fetch('http://10.25.245.175:5001/nearby-cities', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(cityData)
-                });
-
-                if (!response.ok) {
-                    throw new Error('Failed to send data to backend');
+            navigate(`/city-stats`, {
+                state: {
+                    cityData,  // Pass cityData directly to the next page
+                    mainMarker: {
+                        lat: mainMarker.lat,
+                        lon: mainMarker.lon,
+                        name: mainMarker.name
+                    }
                 }
+            });
 
-                const responseData = await response.json();
-                localStorage.setItem('cityData', JSON.stringify(responseData));
-                console.log('Successfully sent city data to backend:', JSON.parse(JSON.stringify(responseData)));
+            // try {
+            //     const response = await fetch('http://10.25.245.175:5001/nearby-cities', {
+            //         method: 'POST',
+            //         headers: {
+            //             'Content-Type': 'application/json',
+            //         },
+            //         body: JSON.stringify(cityData)
+            //     });
 
-                navigate(`/city-stats?lat=${mainMarker.lat}&lon=${mainMarker.lon}&city=${encodeURIComponent(mainMarker.name)}`);
-            } catch (error) {
-                console.error('Error sending data to backend:', error);
-            }
+            //     if (!response.ok) {
+            //         throw new Error('Failed to send data to backend');
+            //     }
+
+            //     const responseData = await response.json();
+            //     console.log('Successfully sent city data to backend:', responseData);
+
+            //     // navigate(`/city-stats?lat=${mainMarker.lat}&lon=${mainMarker.lon}&city=${encodeURIComponent(mainMarker.name)}`);
+            // } catch (error) {
+            //     console.error('Error sending data to backend:', error);
+            // }
         }
     };
 
@@ -435,22 +445,30 @@ const LocationLanding = () => {
 
             {/* Menu Toggle Button */}
             {showStatsButton && (
-                <IconButton
-                    onClick={() => setDrawerOpen(true)}
-                    sx={{
-                        position: 'absolute',
-                        right: 20,
-                        top: 20,
-                        zIndex: 1000,
-                        backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                        '&:hover': {
-                            backgroundColor: 'rgba(255, 255, 255, 1)',
-                        }
-                    }}
-                >
-                    <MenuIcon />
-                </IconButton>
-            )}
+    <Button
+        variant="contained"
+        onClick={() => setDrawerOpen(true)}
+        sx={{
+            position: 'absolute',
+            right: 20,
+            top: 20,
+            zIndex: 1000,
+            backgroundColor: 'white',
+            color: '#333',
+            textTransform: 'none',
+            fontWeight: 'bold',
+            padding: '8px 16px',
+            borderRadius: '8px',
+            boxShadow: '0 3px 6px rgba(0, 0, 0, 0.1)',
+            '&:hover': {
+                backgroundColor: '#f5f5f5',
+                color: '#1976D2'
+            }
+        }}
+    >
+        Options & Filters
+    </Button>
+)}
 
             {/* Side Drawer */}
             <Drawer
@@ -767,7 +785,9 @@ const LocationLanding = () => {
                 </MapContainer>
             </Box>
         </Box>
+        
     );
 };
 
 export default LocationLanding;
+
