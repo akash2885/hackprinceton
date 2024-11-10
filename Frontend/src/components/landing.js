@@ -212,7 +212,7 @@ const LocationLanding = () => {
                 }&limit=30`
             );
             const nearbyData = await nearbyResponse.json();
-
+    
             let filteredCities = nearbyData
                 .filter(place => {
                     const distance = calculateDistance(
@@ -240,13 +240,14 @@ const LocationLanding = () => {
                     ).toFixed(1)
                 }))
                 .sort((a, b) => parseFloat(a.distance) - parseFloat(b.distance));
-
-            return filteredCities;
+    
+            return filteredCities.slice(0, 5); // Limit to 5 cities
         } catch (error) {
             console.error('Error fetching nearby cities:', error);
             return [];
         }
     };
+    
 
     const handleSearch = async (location) => {
         if (!location) return;
