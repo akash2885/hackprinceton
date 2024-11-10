@@ -47,6 +47,8 @@ const nearbyCityIcon = L.icon({
     shadowSize: [41, 41]
 });
 
+
+
 // Function to calculate distance between two points using Haversine formula
 function calculateDistance(lat1, lon1, lat2, lon2) {
     const R = 3959;
@@ -119,6 +121,11 @@ const LocationLanding = () => {
     const [showHeatmap, setShowHeatmap] = useState(false);
     const [heatmapData, setHeatmapData] = useState([]);
     const [isLoadingHeatmap, setIsLoadingHeatmap] = useState(false);
+
+
+
+    const [citySummary, setCitySummary] = useState('');
+    const [selectedCity, setSelectedCity] = useState(null);     
 
     // Effect to apply filters
     useEffect(() => {
@@ -204,49 +211,75 @@ const LocationLanding = () => {
     };
 
     const fetchNearbyCities = async (lat, lon) => {
+        let viewboxSize = 1.0; // Initial viewbox size
+        let filteredCities = [];
+    
         try {
-            const viewboxSize = 1.0;
-            const nearbyResponse = await fetch(
-                `https://nominatim.openstreetmap.org/search?format=json&q=city&countrycodes=us&bounded=1&viewbox=${
-                    lon - viewboxSize},${lat + viewboxSize},${lon + viewboxSize},${lat - viewboxSize
-                }&limit=30`
-            );
-            const nearbyData = await nearbyResponse.json();
+            // Try fetching cities with the initial viewbox size
+            while (filteredCities.length < 5 && viewboxSize <= 5.0) {
+                const response = await fetch(
+                    `https://nominatim.openstreetmap.org/search?format=json&q=city&countrycodes=us&bounded=1&viewbox=${
+                        lon - viewboxSize},${lat + viewboxSize},${lon + viewboxSize},${lat - viewboxSize
+                    }&limit=30&addressdetails=1`
+                );
     
-            let filteredCities = nearbyData
-                .filter(place => {
-                    const distance = calculateDistance(
-                        lat,
-                        lon,
-                        parseFloat(place.lat),
-                        parseFloat(place.lon)
-                    );
-                    return (
-                        distance <= filterDistance &&
-                        distance > 0.5 &&
-                        (place.type === 'city' || place.type === 'town' || place.class === 'place')
-                    );
-                })
-                .map(place => ({
-                    lat: parseFloat(place.lat),
-                    lon: parseFloat(place.lon),
-                    name: place.display_name.split(',')[0],
-                    fullName: place.display_name,
-                    distance: calculateDistance(
-                        lat,
-                        lon,
-                        parseFloat(place.lat),
-                        parseFloat(place.lon)
-                    ).toFixed(1)
-                }))
-                .sort((a, b) => parseFloat(a.distance) - parseFloat(b.distance));
+                // Check if the response is OK
+                if (!response.ok) {
+                    console.error('Failed to fetch cities. Status:', response.status);
+                    return [];
+                }
     
-            return filteredCities.slice(0, 5); // Limit to 5 cities
+                const nearbyData = await response.json();
+    
+                filteredCities = nearbyData
+                    .filter(place => {
+                        const distance = calculateDistance(
+                            lat,
+                            lon,
+                            parseFloat(place.lat),
+                            parseFloat(place.lon)
+                        );
+    
+                        return (
+                            distance <= filterDistance &&
+                            distance > 0.5 &&
+                            (place.type === 'city' || place.type === 'town' || place.class === 'place')
+                        );
+                    })
+                    .map(place => {
+                        const { address } = place;
+                        const cityName = place.display_name.split(',')[0].trim();
+                        const state = address?.state || 'Unknown';
+                        
+                        return {
+                            lat: parseFloat(place.lat),
+                            lon: parseFloat(place.lon),
+                            name: cityName,
+                            state: state,
+                            fullName: place.display_name,
+                            distance: calculateDistance(
+                                lat,
+                                lon,
+                                parseFloat(place.lat),
+                                parseFloat(place.lon)
+                            ).toFixed(1)
+                        };
+                    })
+                    .sort((a, b) => parseFloat(a.distance) - parseFloat(b.distance));
+    
+                // Expand the viewbox size if not enough cities are found
+                viewboxSize += 0.5;
+            }
+    
+            // Return only the top 5 cities
+            return filteredCities.slice(0, 5);
         } catch (error) {
             console.error('Error fetching nearby cities:', error);
             return [];
         }
     };
+    
+    
     
 
     const handleSearch = async (location) => {
@@ -347,6 +380,39 @@ const LocationLanding = () => {
             // }
         }
     };
+    const fetchCitySummary = async (city, state) => {
+        try {
+            console.log(`Fetching summary for: ${city}, ${state}`);
+            const response = await fetch(`http://127.0.0.1:5001/api/getCitySummary?city=${encodeURIComponent(city)}&state=${encodeURIComponent(state)}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+    
+            // Check if the response is OK (status code 200)
+            if (!response.ok) {
+                console.error(`Error: Received status ${response.status}`);
+                setCitySummary("Error fetching summary.");
+                return;
+            }
+    
+            // Parse the JSON response
+            const data = await response.json();
+            console.log("Received data:", data);
+    
+            if (data.summary) {
+                setCitySummary(data.summary);
+            } else {
+                setCitySummary("No summary available.");
+            }
+        } catch (error) {
+            console.error('Error fetching city summary:', error);
+            setCitySummary("Error fetching summary.");
+        }
+    };
+    
+    
 
     const getCurrentLocation = () => {
         if (!navigator.geolocation) {
@@ -767,21 +833,33 @@ const LocationLanding = () => {
                         </Marker>
                     )}
 
-                    {filteredCities.map((city, index) => (
-                        <Marker
-                            key={index}
-                            position={[city.lat, city.lon]}
-                            icon={nearbyCityIcon}
-                        >
-                            <Popup>
-                                <strong>{city.name}</strong>
-                                <br />
-                                {city.distance} miles away
-                                <br />
-                                {city.fullName}
-                            </Popup>
-                        </Marker>
-                    ))}
+{filteredCities.map((city, index) => (
+    <Marker
+        key={index}
+        position={[city.lat, city.lon]}
+        icon={nearbyCityIcon}
+        eventHandlers={{
+            click: async () => {
+                setSelectedCity(city.name);
+                const state = city.state || ''; // Ensure state is handled properly
+                await fetchCitySummary(city.name, state);
+            }
+        }}
+    >
+        <Popup>
+            <strong>{city.name}</strong>
+            <br />
+            {city.distance} miles away
+            <br />
+            {city.fullName}
+            <br /><br />
+            <strong>Economic Summary:</strong>
+            <br />
+            {selectedCity === city.name ? citySummary : "Click to load summary..."}
+        </Popup>
+    </Marker>
+))}
+
                 </MapContainer>
             </Box>
         </Box>
