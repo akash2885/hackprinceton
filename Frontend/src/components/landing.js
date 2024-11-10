@@ -445,22 +445,30 @@ const LocationLanding = () => {
 
             {/* Menu Toggle Button */}
             {showStatsButton && (
-                <IconButton
-                    onClick={() => setDrawerOpen(true)}
-                    sx={{
-                        position: 'absolute',
-                        right: 20,
-                        top: 20,
-                        zIndex: 1000,
-                        backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                        '&:hover': {
-                            backgroundColor: 'rgba(255, 255, 255, 1)',
-                        }
-                    }}
-                >
-                    <MenuIcon />
-                </IconButton>
-            )}
+    <Button
+        variant="contained"
+        onClick={() => setDrawerOpen(true)}
+        sx={{
+            position: 'absolute',
+            right: 20,
+            top: 20,
+            zIndex: 1000,
+            backgroundColor: 'white',
+            color: '#333',
+            textTransform: 'none',
+            fontWeight: 'bold',
+            padding: '8px 16px',
+            borderRadius: '8px',
+            boxShadow: '0 3px 6px rgba(0, 0, 0, 0.1)',
+            '&:hover': {
+                backgroundColor: '#f5f5f5',
+                color: '#1976D2'
+            }
+        }}
+    >
+        Options & Filters
+    </Button>
+)}
 
             {/* Side Drawer */}
             <Drawer
@@ -777,6 +785,7 @@ const LocationLanding = () => {
                 </MapContainer>
             </Box>
         </Box>
+        
     );
 };
 
