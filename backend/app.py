@@ -22,17 +22,25 @@ def get_nearby_cities():
     # Extract mainCity and nearbyCities from the received data
     main_city = data.get("mainCity")
     nearby_cities = data.get("nearbyCities")
-    other_city_names = [city['name'] for city in nearby_cities]
-    
-    if not main_city or not nearby_cities:
-        return jsonify({"error": "Invalid data structure. Expected 'mainCity' and 'nearbyCities' fields."}), 400
+    city_names = [main_city]
+    city_names.extend(city['name'] for city in nearby_cities)
 
-    data = generate_data(other_city_names)
+    data = generate_data(city_names)
+
+    main_city_data = data.get(main_city)
+    other_cities_dict = {city_name: city_data for city_name, city_data in data.items() if city_name != main_city}
+
+    # Construct the response data
+    response_data = {
+        "currentCity": {
+            "name": main_city,
+            **(main_city_data or {})  # Use an empty dict if main_city_data is not found
+        },
+        "otherCities": other_cities_dict
+    }
 
     # Example processing: return a success response with the cities received
-    return jsonify({
-        "data": data
-    })
+    return jsonify(response_data)
 
 
 if __name__ == "__main__":

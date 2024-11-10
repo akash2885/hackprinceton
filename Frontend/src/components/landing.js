@@ -314,26 +314,37 @@ const LocationLanding = () => {
                 }))
             };
 
-            try {
-                const response = await fetch('http://10.25.245.175:5001/nearby-cities', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(cityData)
-                });
-
-                if (!response.ok) {
-                    throw new Error('Failed to send data to backend');
+            navigate(`/city-stats`, {
+                state: {
+                    cityData,  // Pass cityData directly to the next page
+                    mainMarker: {
+                        lat: mainMarker.lat,
+                        lon: mainMarker.lon,
+                        name: mainMarker.name
+                    }
                 }
+            });
 
-                const responseData = await response.json();
-                console.log('Successfully sent city data to backend:', responseData);
+            // try {
+            //     const response = await fetch('http://10.25.245.175:5001/nearby-cities', {
+            //         method: 'POST',
+            //         headers: {
+            //             'Content-Type': 'application/json',
+            //         },
+            //         body: JSON.stringify(cityData)
+            //     });
 
-                navigate(`/city-stats?lat=${mainMarker.lat}&lon=${mainMarker.lon}&city=${encodeURIComponent(mainMarker.name)}`);
-            } catch (error) {
-                console.error('Error sending data to backend:', error);
-            }
+            //     if (!response.ok) {
+            //         throw new Error('Failed to send data to backend');
+            //     }
+
+            //     const responseData = await response.json();
+            //     console.log('Successfully sent city data to backend:', responseData);
+
+            //     // navigate(`/city-stats?lat=${mainMarker.lat}&lon=${mainMarker.lon}&city=${encodeURIComponent(mainMarker.name)}`);
+            // } catch (error) {
+            //     console.error('Error sending data to backend:', error);
+            // }
         }
     };
 
@@ -770,3 +781,4 @@ const LocationLanding = () => {
 };
 
 export default LocationLanding;
+
