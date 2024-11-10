@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   Card, CardContent, CardHeader, 
   Typography, Grid, LinearProgress, 
@@ -13,7 +13,8 @@ import {
   TrendingDown as TrendingDownIcon,
   Info as InfoIcon,
   AttachMoney as MoneyIcon,
-  House as HouseIcon
+  House as HouseIcon,
+  ArrowBack as ArrowBackIcon
 } from '@mui/icons-material';
 
 const theme = createTheme({
@@ -162,6 +163,7 @@ function CityCard({ city, currentCity, isCurrent }) {
 
 export default function CityStatsDashboard() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [currentCity, setCurrentCity] = useState(null);
   const [nearbyCities, setNearbyCities] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -223,9 +225,14 @@ export default function CityStatsDashboard() {
   return (
     <ThemeProvider theme={theme}>
       <Box sx={{ maxWidth: '1400px', mx: 'auto', p: 4 }}>
-        <Typography variant="h3" fontWeight="bold" textAlign="center" mb={2}>
-          City Comparison
-        </Typography>
+        <Box display="flex" alignItems="center" mb={2}>
+          <IconButton onClick={() => navigate(-1)} color="primary">
+            <ArrowBackIcon />
+          </IconButton>
+          <Typography variant="h3" fontWeight="bold" textAlign="center" mb={2}>
+            City Comparison
+          </Typography>
+        </Box>
         <Typography variant="h5" textAlign="center" color="text.secondary" mb={6}>
           Comparing {currentCity.name} with nearby cities
         </Typography>
