@@ -154,11 +154,6 @@ function CityCard({ city, currentCity, isCurrent }) {
           icon={<HouseIcon fontSize="small" />}
           tooltip="Median home price"
         />
-        {!isCurrent && (
-          <Typography variant="body2" color="text.secondary" mt={2}>
-            {getComparisonText(city)}
-          </Typography>
-        )}
       </CardContent>
     </Card>
   );
